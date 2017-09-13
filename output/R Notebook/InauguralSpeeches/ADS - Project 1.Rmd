@@ -5,12 +5,27 @@ date: "September 10, 2017"
 output: html_document
 ---
 
+The idea behind this project/document is to argue whether we are able to identify different word patterns on republican speeches when compared to democratic speeches, as described on the Project Introduction.
+
+For that, we'll analyze the 60 inaugural speeches from all US Presidents so far, using text mining, clustering and topic modeling tools.
+
+Thus, we will break down our project into XXX steps:
+
+1) Text Mining: We'll use "tm" package to create a corpus of documents, remove noisy data and create a Document Term Matrix;
+
+
+Before we start, let's first load all necessary libraries:
+
 ```{r, warning=F}
 library(tm)
 library(wordcloud)
 library(fpc)
 library(ggplot2)
+```
 
+
+
+```{r}
 #Reading file with speech dates
 dates.speeches <- read.table("D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923/data/InauguationDates.txt", header = T, skip = 1, sep = "\t")
 
