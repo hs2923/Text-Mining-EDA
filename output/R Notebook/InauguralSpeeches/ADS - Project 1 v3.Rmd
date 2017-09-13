@@ -1,0 +1,123 @@
+---
+title: "ADS - Project 1"
+author: "Henrique Saboya Lopes Tavares de Melo (hs2923)"
+date: "September 10, 2017"
+output: html_document
+---
+
+```{r, warning=F}
+library(tm)
+library(wordcloud)
+library(fpc)
+library(ggplot2)
+
+#Reading file with speech dates
+dates.speeches <- read.table("D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923/data/InauguationDates.txt", header = T, skip = 1, sep = "\t")
+
+#Reading Information file 
+InaugurationInfo <- read.csv("D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923/data/InaugurationInfo.csv")
+
+
+```
+
+Create Corpus
+
+```{r setup, include=FALSE}
+directory <- "D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923/data/InauguralSpeeches"
+
+doc <- DirSource(directory = directory, encoding = "UTF-8", pattern = "\\.txt$")
+
+ovid <- VCorpus(doc, readerControl = list(language = "en"))
+```
+
+Transform Corpus
+
+```{r}
+ovid.t <- ovid
+ovid.t <- tm_map(ovid.t, content_transformer(tolower))
+ovid.t <- tm_map(ovid.t, removeWords, stopwords("english"))
+ovid.t <- tm_map(ovid.t, removePunctuation, preserve_intra_word_dashes = T)
+ovid.t <- tm_map(ovid.t, stripWhitespace)
+
+```
+
+Who is the most prolix?
+
+```{r}
+
+```
+
+Explore Data
+
+```{r}
+dtm <- DocumentTermMatrix(ovid.t)
+dim(dtm)
+inspect(dtm)
+findFreqTerms(dtm, 150)
+```
+
+It's now clear to see the most common words among President's speeches. First, words such as 'America', 'Country' and 'Citizens' could have been foreseen in any presidential speech, however let's focus on some specific words that may relate to American values. The words 'Free', 'Freedom', 'Peace', 'Power', 'Union'and 'War' have deep ideological meanings which we can interpret as the most important Ideological Values for the United States, from a quantitative perspective. 
+
+Word Cloud
+
+```{r, warning=F}
+wordcloud(tm_map(ovid.t, PlainTextDocument), min.freq=100, scale=c(5,2),rot.per = 0.25,
+          random.color=T, max.word=60, random.order=F,colors=brewer.pal(8,"Dark2"))
+```
+
+Remove sparse terms
+
+```{r}
+dtm <- removeSparseTerms(dtm, 0.4)
+dim(dtm)
+dtm.df <- as.data.frame(as.matrix(dtm))
+```
+
+Add Tables to DF
+
+```{r}
+InaugurationInfo$Key <- paste("inaug", InaugurationInfo$File, "-",InaugurationInfo$Term, ".txt", sep = "")
+dtm.df$Key <- rownames(dtm.df)
+
+dtm.df <- merge(x = dtm.df, y = InaugurationInfo[,c(4,6)])
+
+
+
+```
+
+PCA
+
+```{r}
+PCA.model <- prcomp(dtm)
+summary(PCA.model)
+
+plot(PCA.model$sdev, type = "l", col = "blue")
+points(PCA.model$sdev, pch = 22, bg = "red")
+
+ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
+  geom_point(aes(col = as.factor(dtm.df$Party)))
+
+```
+
+Clustering
+
+```{r}
+Cluster.model <- kmeans(dtm, 3)
+Cluster.model2 <- kmeans(dtm, 4)
+
+dtm.df$Cluster1 <- Cluster.model$cluster
+dtm.df$Cluster2 <- Cluster.model2$cluster
+
+
+ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
+  geom_point(aes(col = as.factor(dtm.df$Cluster1)))
+ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
+  geom_point(aes(col = as.factor(dtm.df$Cluster2)))
+
+```
+
+
+
+
+
+
