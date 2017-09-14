@@ -15,6 +15,8 @@ Thus, we will break down our project into XXX steps:
 
 2) Clustering: We'll cluster our documents according to the word frequencies used on the speeches;
 
+3) Topic Modeling: We'll use topic modeling tools to verify if Political Parties have significant distinctions in topics;
+
 
 ## Step 0
 
@@ -258,7 +260,9 @@ Now that we have seen our contigency tables and had a visual input of our data, 
 
 The choice of K-Means with PCA was good to have a sense of the Words used and differences among speeches, however when we look at the data, using a non-linear model may seem a good idea if we are to better segregate Democrats from Republicans.
 
+## Step 3
 
+### Topic Modeling
 
 
 
