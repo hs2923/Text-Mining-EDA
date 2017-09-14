@@ -266,20 +266,6 @@ Now that we have seen our contigency tables and had a visual input of our data, 
 The choice of K-Means with PCA was good to have a sense of the Words used and differences among speeches, however when we look at the data, using a non-linear model may seem a good idea if we are to better segregate Democrats from Republicans.
 
 
-```{r}
-dtm.qda <- subset(dtm.df, select = -c(Cluster2, Cluster3, Cluster4, Key, day))
-
-QDA.model <- qda(Party ~ american + among + best + can + citizens + come + common + confidence + constitution + country + duty, data = dtm.qda)
-QDA.model
-QDA.model$class
-
-pred <- predict(QDA.model)$class
-
-error <- sum(pred != dtm.qda$Party)
-error.rate <- error/length(dtm.qda$Party)
-error.rate
-```
-
 
 
 
