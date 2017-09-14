@@ -104,8 +104,17 @@ ovid.t becomes our new transformed corpus.
 Who is the most prolix?
 
 ```{r}
+full.char <- sapply(content(ovid), nchar)[1,]
+partial.char <- sapply(content(ovid.t), nchar)[1,]
+n <- names(meta(ovid, "author"))
 
+barplot(full.char - partial.char, horiz = T, args.legend = n)
 
+prolix.df <- data.frame(full.char - partial.char, n)
+names(prolix.df) <- c("Number", "Speech")
+
+ggplot(data = prolix.df, aes(x = Speech, y = Number)) +
+    geom_bar(stat = "identity")
 ```
 
 With our speeches data now cleaned up and organized in a corpus, it is easy to make some analyzes. Let's create a Document Term Matrix to first explore and understand which words are more commonly used by American Presidents. This will later allow us to make deeper analyzes.
