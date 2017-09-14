@@ -1,0 +1,176 @@
+---
+title: "ADS - Project 1"
+author: "Henrique Saboya Lopes Tavares de Melo (hs2923)"
+date: "September 10, 2017"
+output: html_document
+---
+
+The idea behind this project/document is to argue whether we are able to identify different word patterns on republican speeches when compared to democratic speeches, as described on the Project Introduction.
+
+For that, we'll analyze the 60 inaugural speeches from all US Presidents so far, using text mining, clustering and topic modeling tools.
+
+Thus, we will break down our project into XXX steps:
+
+1) Text Mining: We'll use "tm" package to create a corpus of documents, remove noisy data and create a Document Term Matrix;
+
+
+
+
+
+Before we start, let's first load all necessary packages:
+
+```{r, warning=F}
+library(tm)
+library(wordcloud)
+library(fpc)
+library(ggplot2)
+library(RCurl)
+```
+
+1)
+
+Now, we need to import the information that we have been provided with. We have 2 documents, one with speech dates, and the other with detailed information about the presidents, including their political parties which is crucial to our analyses.
+
+```{r}
+#Reading file with speech dates from local directory
+
+dir1 <- "D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923/data/InauguationDates.txt"
+
+dates.speeches <- read.table(dir1, header = T, skip = 1, sep = "\t")
+
+#Reading Information file from local directory
+
+dir2 <- "D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923/data/InaugurationInfo.csv"
+  
+InaugurationInfo <- read.csv(dir2)
+
+rm(dir1,dir2)
+```
+
+The next step is to create a corpus with all documents (speeches in our case), so that we can perform our initial text analyzes.
+
+```{r setup, include=FALSE}
+#Importing Speech data
+
+dir3 <- "D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923/data/InauguralSpeeches"
+
+doc <- DirSource(directory = dir3, encoding = "UTF-8", pattern = "\\.txt$"); rm(dir3)
+
+ovid <- VCorpus(doc, readerControl = list(language = "en"))
+```
+
+Let's get a sense of our corpus:
+
+```{r}
+ovid
+
+inspect(ovid[1])
+```
+
+On the following step, we'll make use of "tm" functions to: standardize all words to lower case, remove stop words, remove punctuations and clean white spaces. 
+
+```{r}
+ovid.t <- ovid   #Renaming corpus
+ovid.t <- tm_map(ovid.t, content_transformer(tolower))
+ovid.t <- tm_map(ovid.t, removeWords, stopwords("english"))
+ovid.t <- tm_map(ovid.t, removePunctuation, preserve_intra_word_dashes = T)
+ovid.t <- tm_map(ovid.t, stripWhitespace)
+```
+
+ovid.t becomes our new transformed corpus.
+
+Who is the most prolix?
+
+```{r}
+
+
+```
+
+With our speeches data now cleaned up and organized in a corpus, it is easy to make some analyzes. Let's create a Document Term Matrix to first explore and understand which words are more commonly used by American Presidents. This will later allow us to make deeper analyzes.
+
+```{r}
+dtm <- DocumentTermMatrix(ovid.t) #Function to create matrix
+dim(dtm)
+```
+
+Our Document term Matrix has 58 rows (documents) and 9407 columns (vocabulary words). A brief summary is shown below:
+
+```{r}
+inspect(dtm[1:5, 10:13])
+```
+
+As expected, we initially have a high level of sparsity (columns with many zeros), however, for now, let's take a look at the overall most common words used by presidents. Using a "rule of thumb", we'll select only the words that appear more than 150 times.
+
+```{r}
+findFreqTerms(dtm, 150)
+```
+
+It's now clear to see the most common words among President's speeches. First, words such as 'America', 'Country' and 'Citizens' could have been foreseen in any presidential speech, however let's focus on some specific words that may relate to American values. The words 'Free', 'Freedom', 'Peace', 'Power', 'Union'and 'War' have deep ideological meanings which we can relate to important Ideological Values for the United States. 
+
+Making a Word Cloud will help us visualize this information.
+
+```{r, warning=F}
+wordcloud(tm_map(ovid.t, PlainTextDocument), min.freq=100, scale=c(5,2),rot.per = 0.25,
+          random.color=T, max.word=60, random.order=F,colors=brewer.pal(8,"Dark2"))
+```
+
+Now, as described before, our Document Term Matrix has more than 9000 words. To make more meaningful analyzes, let's get rid of sparse terms, focusing on the most repeated ones. We are not looking for an optimal sparsity value to filter our data, so let's set a 50% column sparsity to be our cutting boundary.
+
+```{r}
+dtm <- removeSparseTerms(dtm, 0.5)
+dim(dtm)
+inspect(dtm[1:5, 10:13])
+dtm.df <- as.data.frame(as.matrix(dtm))
+```
+
+We now have a matrix with only 150 terms. Have in mind that we have cut out columns with more than 50% sparsity, and our resulting matrix happened to present an overal 40% sparcity, these 2 are different measures.
+
+Also, let's merge the information from president speeches to our Document Term matrix.
+
+```{r}
+InaugurationInfo$Key <- paste("inaug", InaugurationInfo$File, "-",InaugurationInfo$Term, ".txt", sep = "")
+dtm.df$Key <- rownames(dtm.df) #Creates a key which will be used to link the tables
+
+dtm.df <- merge(x = dtm.df, y = InaugurationInfo[,c(4,6)])
+
+#Reshapes the dataframe format before merging
+ds <- reshape(dates.speeches, direction = "long", varying = list(2:5), v.names = "SpeechDates") 
+ds <- ds[!ds$SpeechDates == "", c(1:3)]
+
+```
+
+PCA
+
+```{r}
+PCA.model <- prcomp(dtm)
+
+plot(PCA.model$sdev, type = "l", col = "blue")
+points(PCA.model$sdev, pch = 22, bg = "red")
+
+ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
+  geom_point(aes(col = as.factor(dtm.df$Party)))
+
+```
+
+Clustering
+
+```{r}
+Cluster.model <- kmeans(dtm, 3)
+Cluster.model2 <- kmeans(dtm, 4)
+
+dtm.df$Cluster1 <- Cluster.model$cluster
+dtm.df$Cluster2 <- Cluster.model2$cluster
+
+
+ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
+  geom_point(aes(col = as.factor(dtm.df$Cluster1)))
+ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
+  geom_point(aes(col = as.factor(dtm.df$Cluster2)))
+
+```
+
+
+
+
+
+
