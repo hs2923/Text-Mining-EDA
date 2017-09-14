@@ -5,29 +5,51 @@ date: "September 10, 2017"
 output: html_document
 ---
 
-The idea behind this project/document is to argue whether we are able to identify different word patterns on republican speeches when compared to democratic speeches, as described on the Project Introduction.
+The idea behind this project/document is to argue on two main questions: whether we are able to identify different word patterns on republican speeches when compared to democratic speeches, and, if they show different word patterns, are these patterns consistent within each party?
 
-For that, we'll analyze the 60 inaugural speeches from all US Presidents so far, using text mining, clustering and topic modeling tools.
+For that, we'll analyze the 58 inaugural speeches from most US Presidents so far, using text mining, clustering and topic modeling tools.
 
 Thus, we will break down our project into XXX steps:
 
 1) Text Mining: We'll use "tm" package to create a corpus of documents, remove noisy data and create a Document Term Matrix;
 
+2) Clustering: We'll cluster our documents according to the word frequencies used on the speeches;
 
 
+## Step 0
 
+### Tools
 
 Before we start, let's first load all necessary packages:
 
-```{r, warning=F}
+```{r, warning=F, message=F}
+set.seed(0)
+
+packages.used=c("tm", "wordcloud", "fpc", 
+                "ggplot2", "RCurl", "xlsx", "MASS")
+
+# check packages that need to be installed.
+packages.needed=setdiff(packages.used, 
+                        intersect(installed.packages()[,1], 
+                                  packages.used))
+# install additional packages
+if(length(packages.needed)>0){
+  install.packages(packages.needed, dependencies = TRUE,
+                   repos='http://cran.us.r-project.org')
+}
+
 library(tm)
 library(wordcloud)
 library(fpc)
 library(ggplot2)
 library(RCurl)
+library(xlsx)
+library(MASS)
 ```
 
-1)
+## Step 1
+
+### Text Mining
 
 Now, we need to import the information that we have been provided with. We have 2 documents, one with speech dates, and the other with detailed information about the presidents, including their political parties which is crucial to our analyses.
 
@@ -40,9 +62,9 @@ dates.speeches <- read.table(dir1, header = T, skip = 1, sep = "\t")
 
 #Reading Information file from local directory
 
-dir2 <- "D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923/data/InaugurationInfo.csv"
+dir2 <- "D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923/data/InaugurationInfo.xlsx"
   
-InaugurationInfo <- read.csv(dir2)
+InaugurationInfo <- read.xlsx(dir2, sheetIndex = 1)
 
 rm(dir1,dir2)
 ```
@@ -110,7 +132,7 @@ It's now clear to see the most common words among President's speeches. First, w
 Making a Word Cloud will help us visualize this information.
 
 ```{r, warning=F}
-wordcloud(tm_map(ovid.t, PlainTextDocument), min.freq=100, scale=c(5,2),rot.per = 0.25,
+wordcloud(tm_map(ovid.t, PlainTextDocument), min.freq=100, scale=c(5,2),
           random.color=T, max.word=60, random.order=F,colors=brewer.pal(8,"Dark2"))
 ```
 
@@ -123,7 +145,7 @@ inspect(dtm[1:5, 10:13])
 dtm.df <- as.data.frame(as.matrix(dtm))
 ```
 
-We now have a matrix with only 150 terms. Have in mind that we have cut out columns with more than 50% sparsity, and our resulting matrix happened to present an overal 40% sparcity, these 2 are different measures.
+We now have a matrix with only 150 terms!
 
 Also, let's merge the information from president speeches to our Document Term matrix.
 
@@ -133,41 +155,131 @@ dtm.df$Key <- rownames(dtm.df) #Creates a key which will be used to link the tab
 
 dtm.df <- merge(x = dtm.df, y = InaugurationInfo[,c(4,6)])
 
-#Reshapes the dataframe format before merging
+#Reshape and adequate the dataframe format before merging
 ds <- reshape(dates.speeches, direction = "long", varying = list(2:5), v.names = "SpeechDates") 
 ds <- ds[!ds$SpeechDates == "", c(1:3)]
+ds$SpeechDates <- as.Date(ds$SpeechDates, "%m/%d/%Y")
+names(ds) <- c("President", "Term", "SpeechDate")
+ds$Key <- paste("inaug", sapply(ds$President, gsub, pattern = " ", replacement = ""), "-",ds$Term, ".txt", sep = "")
 
 ```
 
-PCA
+## Step 2
+
+### Clustering
+
+Before we proceed with Clustering, let's take a peek at the World Cloud for both Republicans and Democrats, to check if we can already identify some differences.
+
+```{r, warning=F, message=F}
+par(mfrow = c(1,2))
+
+wordcloud(words = names(dtm.df[which(dtm.df$Party == "Democratic"), which(sapply(dtm.df, is.numeric))]), freq = colSums(dtm.df[which(dtm.df$Party == "Democratic"), which(sapply(dtm.df, is.numeric))]), min.freq=60, scale=c(5,1), random.color=T, max.word=60, random.order=F,colors=brewer.pal(8,"Dark2"))
+
+text(labels = "Democrats", x = 0.5, y = 1.1, cex = 2)
+
+wordcloud(words = names(dtm.df[which(dtm.df$Party == "Republican"), which(sapply(dtm.df, is.numeric))]), freq = colSums(dtm.df[which(dtm.df$Party == "Republican"), which(sapply(dtm.df, is.numeric))]), min.freq=60, scale=c(5,1), random.color=T, max.word=60, random.order=F,colors=brewer.pal(8,"Dark2"))
+
+text(labels = "Republicans", x = 0.5, y = 1.1, cex = 2)
+
+``` 
+
+Let us also set other parties with the same label.
+
+```{r}
+dtm.df$Party <- ifelse(dtm.df$Party == "Republican" | dtm.df$Party == "Democratic", as.character(dtm.df$Party), "Other")
+```
+
+At our first look, it is hard to make any conclusions. The words just tend to repeat themselves for both groups.
+
+Nonetheless, with our Document Term Matrix, we are now able to perform some Clustering analyzes. The idea is to group speeches according to the words they tend to be used. We don't need to find an optimal number os clusters, we just need to identify whether we can distinguish Democrats from Republicans by their vocabulary, hence, we'll just try different number of clusters using K-means.
+
+```{r}
+Cluster.model2 <- kmeans(dtm, 2, iter.max = 15, nstart = 20)
+Cluster.model3 <- kmeans(dtm, 3, iter.max = 15, nstart = 20)
+Cluster.model4 <- kmeans(dtm, 4, iter.max = 15, nstart = 20)
+
+dtm.df$Cluster2 <- Cluster.model2$cluster
+dtm.df$Cluster3 <- Cluster.model3$cluster
+dtm.df$Cluster4 <- Cluster.model4$cluster
+```
+
+Clustering our speeches into 2, 3 and 4 clusters, let's understand how they differ.
+
+```{r}
+table(dtm.df[ ,c("Party", "Cluster2")])
+```
+
+If we look at 2 clusters only, we could assume Republicans and Democrats do seem to have similar vocabularies.
+
+```{r}
+table(dtm.df[ ,c("Party", "Cluster3")])
+```
+
+Using 3 clusers, we are now able to raise some questions. Most Democrats fall within Cluster 3, however republicans tend to go to Clusters 1 and 2.
+
+```{r}
+table(dtm.df[ ,c("Party", "Cluster4")])
+```
+
+Breaking down into 4 Clusters, we can see that more than 54% of democrats fall in Cluster 3, and 79% of Republicans fall in Clusters 1 and 2.
+
+To better visualize these Clusters, let's perform a PCA analyzes in order to reduce our problem to 2 dimensions.
 
 ```{r}
 PCA.model <- prcomp(dtm)
 
-plot(PCA.model$sdev, type = "l", col = "blue")
-points(PCA.model$sdev, pch = 22, bg = "red")
+plot((PCA.model$sdev^2)/sum(PCA.model$sdev^2)*100, type = "l", col = "blue", ylab = "Prop. of Variance", xlab = "PC")
+points((PCA.model$sdev^2)/sum(PCA.model$sdev^2)*100, pch = 22, bg = "red")
 
+```
+
+Our first 2 Principal Components are capable of explaining approximately 50% of our Variance.
+
+Thus, Let's first look where do our speeches fall according to their Political parties, and then according to their clusters:
+
+```{r}
 ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
   geom_point(aes(col = as.factor(dtm.df$Party)))
 
-```
+#2 Clusters
 
-Clustering
-
-```{r}
-Cluster.model <- kmeans(dtm, 3)
-Cluster.model2 <- kmeans(dtm, 4)
-
-dtm.df$Cluster1 <- Cluster.model$cluster
-dtm.df$Cluster2 <- Cluster.model2$cluster
-
-
-ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
-  geom_point(aes(col = as.factor(dtm.df$Cluster1)))
 ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
   geom_point(aes(col = as.factor(dtm.df$Cluster2)))
 
+#3 Clusters
+
+ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
+  geom_point(aes(col = as.factor(dtm.df$Cluster3)))
+
+#4 Clusters
+
+ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
+  geom_point(aes(col = as.factor(dtm.df$Cluster4)))
 ```
+
+Now that we have seen our contigency tables and had a visual input of our data, what can we conclude so far:
+
+1. There are some patterns on Democratic speeches indeed that are different from Republican speeches, with some exceptions apparently;
+
+2. Most democratic speeches seem to be consistent with each other, however republican speeches tend to diverge from their selves and from other parties, also with exceptions;
+
+The choice of K-Means with PCA was good to have a sense of the Words used and differences among speeches, however when we look at the data, using a non-linear model may seem a good idea if we are to better segregate Democrats from Republicans.
+
+
+```{r}
+dtm.qda <- subset(dtm.df, select = -c(Cluster2, Cluster3, Cluster4, Key, day))
+
+QDA.model <- qda(Party ~ american + among + best + can + citizens + come + common + confidence + constitution + country + duty, data = dtm.qda)
+QDA.model
+QDA.model$class
+
+pred <- predict(QDA.model)$class
+
+error <- sum(pred != dtm.qda$Party)
+error.rate <- error/length(dtm.qda$Party)
+error.rate
+```
+
 
 
 
