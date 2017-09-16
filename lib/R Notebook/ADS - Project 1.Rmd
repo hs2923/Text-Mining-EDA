@@ -2,7 +2,9 @@
 title: "ADS - Project 1"
 author: "Henrique Saboya Lopes Tavares de Melo (hs2923)"
 date: "September 10, 2017"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 The idea behind this project/document is to argue on two main questions: whether we are able to identify different word patterns on republican speeches when compared to democratic speeches, and, if they show different word patterns, are these patterns consistent within each party?
@@ -28,7 +30,7 @@ Before we start, let's first load all necessary packages:
 set.seed(0)
 
 packages.used=c("tm", "wordcloud", "fpc", 
-                "ggplot2", "RCurl", "xlsx", "MASS")
+                "ggplot2", "RCurl", "xlsx", "MASS","topicmodels")
 
 # check packages that need to be installed.
 packages.needed=setdiff(packages.used, 
@@ -47,6 +49,7 @@ library(ggplot2)
 library(RCurl)
 library(xlsx)
 library(MASS)
+library(topicmodels)
 ```
 
 ## Step 1
@@ -57,14 +60,15 @@ Now, we need to import the information that we have been provided with. We have 
 
 ```{r}
 #Reading file with speech dates from local directory
+user.dir <- setwd("D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923")
 
-dir1 <- "D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923/data/InauguationDates.txt"
+dir1 <- "./data/InauguationDates.txt"
 
 dates.speeches <- read.table(dir1, header = T, skip = 1, sep = "\t")
 
 #Reading Information file from local directory
 
-dir2 <- "D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923/data/InaugurationInfo.xlsx"
+dir2 <- "./data/InaugurationInfo.xlsx"
   
 InaugurationInfo <- read.xlsx(dir2, sheetIndex = 1)
 
@@ -258,14 +262,162 @@ Now that we have seen our contigency tables and had a visual input of our data, 
 
 2. Most democratic speeches seem to be consistent with each other, however republican speeches tend to diverge from their selves and from other parties, also with exceptions;
 
+3. Looking at the PC1 and PC2 scatterplot, we can argue that many President's inaugural speeches tend to use the same group of words, however, there are some "innovative" speeches that fall a bit outisde of the group of regular speeches, where their majority are within the Republican Party. In summary, the Republicans usually fall outside of the common.
+
 The choice of K-Means with PCA was good to have a sense of the Words used and differences among speeches, however when we look at the data, using a non-linear model may seem a good idea if we are to better segregate Democrats from Republicans.
 
 ## Step 3
 
 ### Topic Modeling
 
+Now, let's use topic modeling tools to verify if we can distinguish republican speeches from democratic speeches based on topic assignments. If most Democratic and Republican speeches differ in topic assignemnts, we can argue they might have different speeches indeed.
+
+For that, we'll perform LDA, setting k to be 4 topics first:
+
+```{r}
+#Set parameters for Gibbs sampling
+burnin <- 4000
+iter <- 2000
+thin <- 500
+seed <-list(2003,5,63,100001,765)
+nstart <- 5
+best <- TRUE
+
+k <- 4
+
+LDA.model <-LDA(dtm, k, method="Gibbs", control = list(nstart = nstart, 
+                                                 seed = seed, best = best,
+                                                 burnin = burnin, iter = iter, 
+                                                 thin = thin))
+
+```
+
+After running LDA, let's look at our output:.
+
+```{r}
+LDA.model.topics <- as.matrix(topics(LDA.model))
+
+table(c(1:k, LDA.model.topics))
+#write.csv(LDA.model.topics, file = paste("./output/LDAGibbs", k, "DocsToTopics.csv"))
+```
+
+Most of the speeches fall within topics 1 and 2
+
+```{r}
+#top 20 terms in each topic
+LDA.model.terms <- as.matrix(terms(LDA.model, 20))
+#write.csv(LDA.model.terms, file = paste("./output/LDAGibbs", k, "TopicsToTerms.csv"))
+
+#probabilities associated with each topic assignment
+LDA.model.prob <- as.data.frame(LDA.model@gamma)
+#write.csv(LDA.model.prob, file = paste("./output/LDAGibbs", k, "TopicProbabilities.csv"))
+
+head(LDA.model.terms)
+```
+
+The table above shows the top 6 words within each topic. We can use these to label our topics names. For instance we can say our topics are: Government, Liberalism, Patriotism and Belief.
+
+```{r}
+topics.names <- c("Government", "Liberalism", "Patriotism", "Belief")
+
+#Find relative importance of top 2 topics
+topic1ToTopic2 <- lapply(1:nrow(dtm), function(x)
+sort(LDA.model.prob[x,])[k]/sort(LDA.model.prob[x,])[k-1])
+
+#write to file
+#write.csv(topic1ToTopic2, file = paste("./output/LDAGibbs", k, "Topic1ToTopic2.csv"))
+```
+
+Now, let's understand how our Topics relate to Political Parties.
+
+```{r}
+#Merge the topic information with previous dataframe
+LDA.model.topics.df <- as.data.frame(as.matrix(topics(LDA.model)))
+LDA.model.topics.df$Key <- rownames(as.matrix(topics(LDA.model)))
+names(LDA.model.topics.df) <- c(paste("Topic ",k), "Key")
+
+LDA.model.topics.df$TopicName <- topics.names[LDA.model.topics.df$Topic]
+
+dtm.df <- merge(x = dtm.df, y = LDA.model.topics.df)
+
+table(dtm.df$Party, dtm.df$TopicName)
+```
+
+Apparently, from the table above, we cannot see any difference on speeche topics from Republicans to Democrats. If we look at our previous PCA Plots:
+
+```{r}
+ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
+  geom_point(aes(col = as.factor(dtm.df$TopicName)))
+```
+
+Now, these similarities maybe due to the fact that we are taking a low number of topics, only 4. Thus, these topics become to broad. Let's try to increase the number of topics:
+
+```{r}
+k <- 10
+
+LDA.model <-LDA(dtm, k, method="Gibbs", control = list(nstart = nstart, 
+                                                 seed = seed, best = best,
+                                                 burnin = burnin, iter = iter, 
+                                                 thin = thin))
 
 
+LDA.model.topics <- as.matrix(topics(LDA.model))
 
+table(c(1:k, LDA.model.topics))
+#write.csv(LDA.model.topics, file = paste("./output/LDAGibbs", k, "DocsToTopics.csv"))
+
+#top 20 terms in each topic
+LDA.model.terms <- as.matrix(terms(LDA.model, 20))
+#write.csv(LDA.model.terms, file = paste("./output/LDAGibbs", k, "TopicsToTerms.csv"))
+
+#probabilities associated with each topic assignment
+LDA.model.prob <- as.data.frame(LDA.model@gamma)
+#write.csv(LDA.model.prob, file = paste("./output/LDAGibbs", k, "TopicProbabilities.csv"))
+
+head(LDA.model.terms)
+```
+
+Given the output above, let's name our topics:
+
+```{r}
+topics.names <- c("Liberalism", "Law", "Belief", "Progress", "Union", "Nation", "Government", "America", "Conflict", "Country" )
+
+#Find relative importance of top 2 topics
+topic1ToTopic2 <- lapply(1:nrow(dtm), function(x)
+sort(LDA.model.prob[x,])[k]/sort(LDA.model.prob[x,])[k-1])
+
+#write to file
+#write.csv(topic1ToTopic2, file = paste("./output/LDAGibbs", k, "Topic1ToTopic2.csv"))
+
+#Merge the topic information with previous dataframe
+LDA.model.topics.df <- as.data.frame(as.matrix(topics(LDA.model)))
+LDA.model.topics.df$Key <- rownames(as.matrix(topics(LDA.model)))
+names(LDA.model.topics.df) <- c(paste("Topic ",k), "Key")
+
+LDA.model.topics.df$TopicName2 <- topics.names[LDA.model.topics.df$Topic]
+
+dtm.df <- merge(x = dtm.df, y = LDA.model.topics.df)
+
+table(dtm.df$Party, dtm.df$TopicName2)
+table(dtm.df$TopicName2, dtm.df$Party)
+
+ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
+  geom_point(aes(col = as.factor(dtm.df$TopicName2)))
+
+```
+
+Now, there's not much we can interpret out of the graph, however, we can make some interesting comments on the table. Though it is hard to say, in general, which political Party does one speech belongs to, based only on the topic, we can see that:
+
+1. The Topics "America" and "Conflict" are mostly republican topics. We don't see any democrat speech classified as such.
+
+2. Republicans fall spreadout within all Topics, which corroborates with what we said above, that Republicans tend to have innovative speeches.
+
+3. Most Democrats fall within either "Union" or "Nation", which shows some repetition in words and topcis used.
+
+### Final Notes
+
+In conclusion, these analyzes may have not provided us with a generalized "yes" or "no" answer, on whether Republicans and Democrats have different speeches, by just looking at words. However, we can clearly see significant distinctions on word choices and topics, whithin these 2 political parties. If we would continue this study in a qualitative level, analizing political and economic aspects, these differents might make total sense.
+
+As next step, I would suggest looking at sentence patterns, not just words, and compare both results.
 
 
