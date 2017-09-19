@@ -3,8 +3,8 @@ title: "ADS - Project 1"
 author: "Henrique Saboya Lopes Tavares de Melo (hs2923)"
 date: "September 10, 2017"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 The idea behind this project/document is to argue on two main questions: whether we are able to identify different word patterns on republican speeches when compared to democratic speeches, and, if they show different word patterns, are these patterns consistent within each party?
@@ -62,13 +62,13 @@ Now, we need to import the information that we have been provided with. We have 
 #Reading file with speech dates from local directory
 #user.dir <- setwd("Directory") #User must set local directory if necessary
 
-dir1 <- "./data/InauguationDates.txt"
+dir1 <- "../data/InauguationDates.txt"
 
 dates.speeches <- read.table(dir1, header = T, skip = 1, sep = "\t")
 
 #Reading Information file from local directory
 
-dir2 <- "./data/InaugurationInfo.xlsx"
+dir2 <- "../data/InaugurationInfo.xlsx"
   
 InaugurationInfo <- read.xlsx(dir2, sheetIndex = 1)
 
@@ -80,7 +80,7 @@ The next step is to create a corpus with all documents (speeches in our case), s
 ```{r}
 #Importing Speech data
 
-dir3 <- "./data/InauguralSpeeches" 
+dir3 <- "../data/InauguralSpeeches" 
 
 #If you face problems running function below, please close .rmd, save the .rmd file on the main folder directory fall2017-project1-hs2923 and run it again.
 
