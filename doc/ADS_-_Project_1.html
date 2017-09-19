@@ -168,15 +168,15 @@ library(topicmodels)</code></pre>
 <h3>Text Mining</h3>
 <p>Now, we need to import the information that we have been provided with. We have 2 documents, one with speech dates, and the other with detailed information about the presidents, including their political parties which is crucial to our analyses.</p>
 <pre class="r"><code>#Reading file with speech dates from local directory
-#user.dir &lt;- setwd(&quot;D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923&quot;)
+#user.dir &lt;- setwd(&quot;Directory&quot;) #User must set local directory if necessary
 
-dir1 &lt;- &quot;./data/InauguationDates.txt&quot;
+dir1 &lt;- &quot;../data/InauguationDates.txt&quot;
 
 dates.speeches &lt;- read.table(dir1, header = T, skip = 1, sep = &quot;\t&quot;)
 
 #Reading Information file from local directory
 
-dir2 &lt;- &quot;./data/InaugurationInfo.xlsx&quot;
+dir2 &lt;- &quot;../data/InaugurationInfo.xlsx&quot;
   
 InaugurationInfo &lt;- read.xlsx(dir2, sheetIndex = 1)
 
@@ -184,7 +184,9 @@ rm(dir1,dir2)</code></pre>
 <p>The next step is to create a corpus with all documents (speeches in our case), so that we can perform our initial text analyzes.</p>
 <pre class="r"><code>#Importing Speech data
 
-dir3 &lt;- &quot;./data/InauguralSpeeches&quot;
+dir3 &lt;- &quot;../data/InauguralSpeeches&quot; 
+
+#If you face problems running function below, please close .rmd, save the .rmd file on the main folder directory fall2017-project1-hs2923 and run it again.
 
 doc &lt;- DirSource(directory = dir3, encoding = &quot;UTF-8&quot;, pattern = &quot;\\.txt$&quot;); rm(dir3)
 
