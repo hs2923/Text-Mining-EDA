@@ -80,7 +80,9 @@ The next step is to create a corpus with all documents (speeches in our case), s
 ```{r}
 #Importing Speech data
 
-dir3 <- "./data/InauguralSpeeches"
+dir3 <- "./data/InauguralSpeeches" 
+
+#If you face problems running function below, please close .rmd, save the .rmd file on the main folder directory fall2017-project1-hs2923 and run it again.
 
 doc <- DirSource(directory = dir3, encoding = "UTF-8", pattern = "\\.txt$"); rm(dir3)
 
