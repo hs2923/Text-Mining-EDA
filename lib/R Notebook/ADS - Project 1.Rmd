@@ -3,8 +3,8 @@ title: "ADS - Project 1"
 author: "Henrique Saboya Lopes Tavares de Melo (hs2923)"
 date: "September 10, 2017"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 The idea behind this project/document is to argue on two main questions: whether we are able to identify different word patterns on republican speeches when compared to democratic speeches, and, if they show different word patterns, are these patterns consistent within each party?
@@ -60,7 +60,7 @@ Now, we need to import the information that we have been provided with. We have 
 
 ```{r}
 #Reading file with speech dates from local directory
-user.dir <- setwd("D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923")
+user.dir <- setwd("Directory")
 
 dir1 <- "./data/InauguationDates.txt"
 
@@ -196,13 +196,15 @@ Nonetheless, with our Document Term Matrix, we are now able to perform some Clus
 Cluster.model2 <- kmeans(dtm, 2, iter.max = 15, nstart = 20)
 Cluster.model3 <- kmeans(dtm, 3, iter.max = 15, nstart = 20)
 Cluster.model4 <- kmeans(dtm, 4, iter.max = 15, nstart = 20)
+Cluster.model5 <- kmeans(dtm, 5, iter.max = 15, nstart = 20)
 
 dtm.df$Cluster2 <- Cluster.model2$cluster
 dtm.df$Cluster3 <- Cluster.model3$cluster
 dtm.df$Cluster4 <- Cluster.model4$cluster
+dtm.df$Cluster5 <- Cluster.model5$cluster
 ```
 
-Clustering our speeches into 2, 3 and 4 clusters, let's understand how they differ.
+Clustering our speeches into 2, 3, 4 and 5 clusters, let's understand how they differ.
 
 ```{r}
 table(dtm.df[ ,c("Party", "Cluster2")])
@@ -214,21 +216,27 @@ If we look at 2 clusters only, we could assume Republicans and Democrats do seem
 table(dtm.df[ ,c("Party", "Cluster3")])
 ```
 
-Using 3 clusers, we are now able to raise some questions. Most Democrats fall within Cluster 3, however republicans tend to go to Clusters 1 and 2.
+Looking at 3 clusters, we can identify what seems to be an outlier, and the rest looks similar. Let's see how it behaves further.
 
 ```{r}
 table(dtm.df[ ,c("Party", "Cluster4")])
 ```
 
-Breaking down into 4 Clusters, we can see that more than 54% of democrats fall in Cluster 3, and 79% of Republicans fall in Clusters 1 and 2.
+Using 4 clusers, we are now able to raise some questions. Most Democrats fall within 1 Cluster, however republicans tend to go to 2 other Clusters mainly, in different proportion than Democrats.
+
+```{r}
+table(dtm.df[ ,c("Party", "Cluster5")])
+```
+
+Breaking down into 5 Clusters, we can see how Democrats (and also other Parties) get seppareted from Republicans, even though we can also see a significant number of exceptions.
 
 To better visualize these Clusters, let's perform a PCA analyzes in order to reduce our problem to 2 dimensions.
 
 ```{r}
 PCA.model <- prcomp(dtm)
 
-plot((PCA.model$sdev^2)/sum(PCA.model$sdev^2)*100, type = "l", col = "blue", ylab = "Prop. of Variance", xlab = "PC")
-points((PCA.model$sdev^2)/sum(PCA.model$sdev^2)*100, pch = 22, bg = "red")
+plot(cumsum((PCA.model$sdev^2)/sum(PCA.model$sdev^2)*100), type = "l", col = "blue", ylab = "Percentage of Variance", xlab = "PC")
+points(cumsum((PCA.model$sdev^2)/sum(PCA.model$sdev^2)*100), pch = 22, bg = "red")
 
 ```
 
@@ -254,6 +262,11 @@ ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
 
 ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
   geom_point(aes(col = as.factor(dtm.df$Cluster4)))
+
+#5 Clusters
+
+ggplot(data = as.data.frame(PCA.model$x[,1:2]), aes(PC1, PC2)) +
+  geom_point(aes(col = as.factor(dtm.df$Cluster5)))
 ```
 
 Now that we have seen our contigency tables and had a visual input of our data, what can we conclude so far:
