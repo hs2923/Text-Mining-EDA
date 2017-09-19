@@ -11,7 +11,7 @@ The idea behind this project/document is to argue on two main questions: whether
 
 For that, we'll analyze the 58 inaugural speeches from most US Presidents so far, using text mining, clustering and topic modeling tools.
 
-Thus, we will break down our project into XXX steps:
+Thus, we will break down our project into 3 steps:
 
 1) Text Mining: We'll use "tm" package to create a corpus of documents, remove noisy data and create a Document Term Matrix;
 
