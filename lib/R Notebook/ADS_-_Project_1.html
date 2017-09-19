@@ -168,7 +168,7 @@ library(topicmodels)</code></pre>
 <h3>Text Mining</h3>
 <p>Now, we need to import the information that we have been provided with. We have 2 documents, one with speech dates, and the other with detailed information about the presidents, including their political parties which is crucial to our analyses.</p>
 <pre class="r"><code>#Reading file with speech dates from local directory
-user.dir &lt;- setwd(&quot;D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923&quot;)
+#user.dir &lt;- setwd(&quot;D:/Google Drive/Google Drive/My Files/2) Estudos/4) Columbia/3) Classes/4) Fall 2017/1) Applied Data Science/1) GitHub/fall2017-project1-hs2923&quot;)
 
 dir1 &lt;- &quot;./data/InauguationDates.txt&quot;
 
@@ -182,6 +182,13 @@ InaugurationInfo &lt;- read.xlsx(dir2, sheetIndex = 1)
 
 rm(dir1,dir2)</code></pre>
 <p>The next step is to create a corpus with all documents (speeches in our case), so that we can perform our initial text analyzes.</p>
+<pre class="r"><code>#Importing Speech data
+
+dir3 &lt;- &quot;./data/InauguralSpeeches&quot;
+
+doc &lt;- DirSource(directory = dir3, encoding = &quot;UTF-8&quot;, pattern = &quot;\\.txt$&quot;); rm(dir3)
+
+ovid &lt;- VCorpus(doc, readerControl = list(language = &quot;en&quot;))</code></pre>
 <p>Let’s get a sense of our corpus:</p>
 <pre class="r"><code>ovid</code></pre>
 <pre><code>## &lt;&lt;VCorpus&gt;&gt;
